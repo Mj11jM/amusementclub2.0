@@ -774,6 +774,10 @@
                 "description": "Upvote or Add a tag to a card"
             },
             {
+                "title": "->tag multi [card] #first_tag #second_tag #third_tag",
+                "description": "Upvote or add multiple tags at once"
+            },
+            {
                 "title": "->tag down [card] #some_tag_here",
                 "description": "Downvote a tag on a card"
             }, 
