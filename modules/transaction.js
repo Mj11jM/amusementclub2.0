@@ -124,6 +124,36 @@ const confirm_trs = async (ctx, user, trs_id) => {
     return ctx.reply(user, `sold **${formatName(ctx.cards[card.id])}** to **${transaction.to}** for **${transaction.price}** ${ctx.symbols.tomato}`)
 }
 
+const confirm_all_trs = async (ctx, user, ids, price) => {
+    if(typeof user === 'string')
+        user = await User.findOne({ discord_id: user })
+
+    if(!user) return;
+
+    for (let i = 0; i < ids.length; i++) {
+        const transaction = await Transaction.findOne({ id: ids[i], status: 'pending' })
+
+        if(!transaction)
+            return ctx.reply(user, `transaction with id \`${ids[i]}\` was not found`, 'red')
+
+        const from_user = await User.findOne({ discord_id: transaction.from_id })
+        const card = from_user.cards.find(x => x.id == transaction.card)
+        if(!card){
+            transaction.status = 'declined'
+            await transaction.save()
+            continue
+        }
+        removeUserCard(from_user, card.id)
+        from_user.exp += transaction.price
+        transaction.status = 'confirmed'
+
+        await from_user.save()
+        await transaction.save()
+    }
+
+    return ctx.reply(user, `sold **${ids.length}** cards to **bot** for **${price}** ${ctx.symbols.tomato}`)
+}
+
 const decline_trs = async (ctx, user, trs_id) => {
     if(typeof user === 'string')
         user = await User.findOne({ discord_id: user })
@@ -142,6 +172,29 @@ const decline_trs = async (ctx, user, trs_id) => {
     await transaction.save()
 
     return ctx.reply(user, `transaction \`${trs_id}\` was declined`)
+}
+
+const decline_all_trs = async (ctx, user, ids, timeout) => {
+    if(typeof user === 'string')
+        user = await User.findOne({ discord_id: user })
+
+    if(!user) return;
+
+    for (let i = 0; i < ids.length; i++) {
+        const transaction = await Transaction.findOne({ id: ids[i], status: 'pending' })
+
+        if(!transaction)
+            return ctx.reply(user, `transaction with id **${ids[i]}** was not found`, 'red')
+
+        transaction.status = 'declined'
+        await transaction.save()
+    }
+
+    if (!timeout)
+        return ctx.reply(user, `${ids.length} transactions were declined`)
+
+    return ctx.reply(user, `confirmation period has timed out, all transactions were declined`, 'grey')
+
 }
 
 const check_trs = async (ctx, user, target) => {
@@ -194,7 +247,9 @@ const ch_map = {
 module.exports = {
     new_trs,
     confirm_trs,
+    confirm_all_trs,
     decline_trs,
+    decline_all_trs,
     check_trs,
     format_listtrs,
     paginate_trslist,
