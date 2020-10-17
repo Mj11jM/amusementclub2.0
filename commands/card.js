@@ -24,7 +24,9 @@ const {
 const {
     new_trs,
     confirm_trs,
+    confirm_all_trs,
     decline_trs,
+    decline_all_trs,
     getPendingFrom
 } = require('../modules/transaction')
 
@@ -298,6 +300,60 @@ cmd('sell', withCards(async (ctx, user, cards, parsedargs) => {
         onConfirm: (x) => confirm_trs(ctx, x, trs.id),
         onDecline: (x) => decline_trs(ctx, x, trs.id)
     })
+}))
+
+cmd(['sell', 'all'], withCards( async (ctx, user, cards, parsedargs) => {
+    if(parsedargs.ids[0])
+        return ctx.reply(user, 'it seems you have listed a user ID in this command. Sell all only allows you to sell to bot. Remove the user ID and try again', 'red')
+
+    if(user.ban && user.ban.embargo)
+        return ctx.reply(user, `you are not allowed to list cards at auction.
+                                Your dealings were found to be in violation of our community rules.
+                                You can inquire further on our [Bot Discord](${ctx.cafe})`, 'red')
+
+    const pending = await getPendingFrom(ctx, user)
+    cards = cards.filter(x => !pending.some(y => y.card === x.id))
+    if(cards.length === 0) {
+        return ctx.reply(user, `cannot find unique cards for this request.
+            You cannot put the same card for sale several times`, 'red')
+    }
+    let total = 0
+    let totalCard = 0
+    let idList = []
+    let waiting = await ctx.reply(user, `currently creating transaction data for your cards. If it is a large amount of cards, this may take a bit(up to 10 minutes), please be patient.`, 'green')
+    let favWarning
+    for (i = 0; i < cards.length; i++) {
+        if (cards[i].fav && cards[i].amount == 1)
+            continue
+        const price = await evalCard(ctx, cards[i], .4)
+        let favChange
+        for (let c = 0; c < cards[i].amount; c++) {
+            if (cards[i].fav && !favChange) {
+                favChange = true
+                favWarning = true
+                c++
+            }
+            total +=  price
+            totalCard++
+            const trs = await new_trs(ctx, user, cards[i], price, null)
+            idList.push(trs.id)
+        }
+    }
+
+    await ctx.bot.deleteMessage(ctx.msg.channel.id, waiting.id, 'Deleting time notice')
+
+    let question = `Do you want to sell ${totalCard} cards for **${total}** ${ctx.symbols.tomato}?
+                    ${favWarning? "**THIS INCLUDES DUPLICATES OF FAVORITED CARDS, USE `!fav` TO REMOVE THESE**": ''}
+                    **THERE IS NO GOING BACK, IF YOU CONFIRM WE WILL NOT REPLACE ANY CARDS**`
+
+    return ctx.pgn.addConfirmation(user.discord_id, ctx.msg.channel.id, {
+        force: ctx.globals.force,
+        question,
+        onConfirm: (x) => confirm_all_trs(ctx, x, idList, total),
+        onDecline: (x) => decline_all_trs(ctx, x, idList, false),
+        onTimeout: (x) => decline_all_trs(ctx, x, idList, true)
+    })
+
 }))
 
 cmd('eval', withGlobalCards(async (ctx, user, cards, parsedargs) => {

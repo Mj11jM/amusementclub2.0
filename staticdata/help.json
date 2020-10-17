@@ -717,6 +717,10 @@
             {
                 "title": "->sell @user [card query]",
                 "description": "Sell a card to another user. Target user will be asked to confirm or decline your transaction. You can **not** send more than 5 requests to the same user. Selling price is decided by bot using **eval algorithm**. You can always run `->eval [card query]` to find out card cost before trading it"
+            },
+            {
+                "title": "->sell all [card query]",
+                "description": "Sell all cards in a specific query to the bot. Leave empty for every card you own \n **THIS WILL TAKE DUPLICATES OF FAVORITES**"
             }
         ]
     },
