@@ -19,7 +19,8 @@ const {
     fetchTagNames,
     fetchUserTags,
     logTagAudit,
-    logTagAdd
+    logTagAdd,
+    auditTagQueueAdd
 } = require('../modules/tag')
 
 const {
@@ -360,41 +361,16 @@ pcmd(['admin', 'mod'], ['tag', 'purge', 'user'], withPurgeTag(async (ctx, user, 
     })
 }, false))
 
-pcmd(['admin', 'mod'], ['tag', 'log', 'removed'],async (ctx, user, ...args) => {
-    let parsedArgs = parseAuditArgs(ctx, args)
-
-    if (!parsedArgs.id)
-        return ctx.reply(user, 'valid user is required!', 'red')
-
-    let target = await fetchOnly(parsedArgs.id)
+pcmd(['admin', 'mod'], ['tag', 'log', 'update'],async (ctx, user) => {
+    let unlogged = await Tag.find( {$and: [{$or: [{logged: false}, {logged: null}]}, {$or: [{status: 'removed'}, {status: 'banned'}]} ]}).sort({author: -1})
+    if (unlogged.length === 0)
+        return ctx.reply(user, 'there are no un-logged tags available to log!')
 
     ctx.pgn.addConfirmation(user.discord_id, ctx.msg.channel.id, {
-        question: `Do you want to add **${parsedArgs.extraArgs.join(', ')}** to ${target.username}'s removed tags log?`,
+        question: `Do you want to add all un-logged removed or banned tags? Current amount of un-logged tags is ${unlogged.length}`,
         onConfirm: async () => {
-            let auditlog = await logTagAdd(ctx, user, target, parsedArgs, false)
-            await auditlog.save()
-            ctx.reply(user, `added **${parsedArgs.extraArgs.join(', ')}** to ${target.username}'s removed tags log`)
-        },
-        onDecline: async () => {
-            ctx.reply(user, `tag log adding was declined`, 'red')
-        }
-    })
-})
-
-pcmd(['admin', 'mod'], ['tag', 'log', 'banned'], async (ctx, user, ...args) => {
-    let parsedArgs = parseAuditArgs(ctx, args)
-
-    if (!parsedArgs.id)
-        return ctx.reply(user, 'valid user is required!', 'red')
-
-    let target = await fetchOnly(parsedArgs.id)
-
-    ctx.pgn.addConfirmation(user.discord_id, ctx.msg.channel.id, {
-        question: `Do you want to add **${parsedArgs.extraArgs.join(', ')}** to ${target.username}'s banned tags log?`,
-        onConfirm: async () => {
-            let auditlog = await logTagAdd(ctx, user, target, parsedArgs, true)
-            await auditlog.save()
-            ctx.reply(user, `added **${parsedArgs.extraArgs.join(', ')}** to ${target.username}'s banned tags log`)
+            await auditTagQueueAdd(ctx, unlogged)
+            ctx.reply(user, `added ${unlogged.length} removed or banned tags to the queue!`)
         },
         onDecline: async () => {
             ctx.reply(user, `tag log adding was declined`, 'red')

@@ -22,6 +22,7 @@ const {
     eval,
     webhooks,
     meta,
+    tag
 } = require('./modules')
 
 var userq = []
@@ -34,7 +35,7 @@ module.exports.create = async ({
         shards, database, token, prefix, 
         baseurl, shorturl, auditc, debug, 
         maintenance, invite, data, dbl, 
-        analytics, evalc
+        analytics, evalc, tagLogQueue
     }) => {
 
     const emitter = new Emitter()
@@ -175,6 +176,7 @@ module.exports.create = async ({
         mixpanel,
         settings: {
             wip: maintenance,
+            tagQueueOn: tagLogQueue
         }
     }
 
@@ -186,6 +188,8 @@ module.exports.create = async ({
     const tick = (ctx) => {
         const now = new Date()
         auction.finish_aucs(ctx, now)
+        if (ctx.settings.tagQueueOn)
+            tag.logQueueWorker(ctx)
     }
 
     /* service tick for guilds */

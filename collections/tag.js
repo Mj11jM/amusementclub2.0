@@ -9,4 +9,6 @@ module.exports = model('Tag', {
     upvotes:        { type: Array, default: [] },
     downvotes:      { type: Array, default: [] },
     status:         { type: String, default: "clear" },
+
+    logged:         { type: Boolean, default: false }
 })

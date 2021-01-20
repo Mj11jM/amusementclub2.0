@@ -4,6 +4,8 @@ const cardMod               = require('./card')
 const colors                = require("../utils/colors");
 const dateFormat            = require(`dateformat`)
 
+const tagLogQueue = []
+
 const fetchTaggedCards = async (tags) => {
     const res = await Tag.find({ name: { $in: tags }})
     return res.filter(x => check_tag(x)).map(x => x.card)
@@ -128,7 +130,7 @@ const logTagAudit = async(ctx, user, tag, ban, targetUser, restore = false) => {
 
     let now = new Date()
     let baseEmbed = {
-        author: { name: `Tag Log for ${targetUser.username}(${targetUser.discord_id}}` },
+        author: { name: `Tag Log for ${targetUser.username}(${targetUser.discord_id})` },
         fields: [
             {
                 name: "Banned",
@@ -268,6 +270,32 @@ const logTagAdd = async (ctx, user, target, parsedArgs,  ban) => {
     return await logTagAudit(ctx, user, tags[0], ban, target)
 }
 
+const auditTagQueueAdd = async (ctx, tags) => {
+    let groups = []
+    let lastItem
+    tags.map((a, i) => {
+        let toPush = a && lastItem && a.author !== lastItem.author
+        if (toPush) {
+            tagLogQueue.push(groups)
+            groups = []
+        }
+        groups.push(a)
+        if (!toPush && i === tags.length - 1) {
+            tagLogQueue.push(groups)
+        }
+        lastItem = a
+    })
+
+    console.log(tagLogQueue)
+}
+
+const logQueueWorker = async (ctx) => {
+    const queue = tagLogQueue[0]
+    if (queue) {
+
+    }
+}
+
 module.exports = Object.assign(module.exports, {
     fetchTaggedCards,
     fetchCardTags,
@@ -278,6 +306,8 @@ module.exports = Object.assign(module.exports, {
     withTag,
     withPurgeTag,
     delete_tag,
+    auditTagQueueAdd,
+    logQueueWorker,
     logTagAudit,
     logTagAdd
 })
