@@ -165,7 +165,12 @@ const finish_aucs = async (ctx, now) => {
         await author.save()
         await from_auc(auc, author, lastBidder)
 
-        await ctx.direct(author, `you sold ${formatName(ctx.cards[auc.card])} on auction \`${auc.id}\` for **${auc.price}** ${ctx.symbols.tomato}`)
+        if(author.prefs.notifications.aucend) {
+            console.log('aucend' + auc.id)
+            await ctx.direct(author, `you sold ${formatName(ctx.cards[auc.card])} on auction \`${auc.id}\` for **${auc.price}** ${ctx.symbols.tomato}`)
+        }
+        console.log('aucwon' + auc.id)
+
         return ctx.direct(lastBidder, `you won auction \`${auc.id}\` for card ${formatName(ctx.cards[auc.card])}!
             You ended up paying **${Math.round(auc.price)}** ${ctx.symbols.tomato} and got **${Math.round(auc.highbid - auc.price)}** ${ctx.symbols.tomato} back.
             ${tback > 0? `You got additional **${tback}** ${ctx.symbols.tomato} from your equipped effect` : ''}`)
@@ -182,6 +187,8 @@ const finish_aucs = async (ctx, now) => {
         }
         addUserCard(author, auc.card)
         await author.save()
+        await aucEvalChecks(ctx, auc, false)
+        console.log('aucendnobid' + auc.id)
         return ctx.direct(author, `your auction \`${auc.id}\` for card ${formatName(ctx.cards[auc.card])} finished, but nobody bid on it.
             You got your card back.`, 'yellow')
     }
